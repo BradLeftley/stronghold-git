@@ -67,3 +67,29 @@ public extension StatusEntry {
         }
     }
 }
+
+public extension CommitFileChange {
+    /// The badge for this file in a commit's file list.
+    var badge: ChangeBadge {
+        switch change {
+        case .added: .added
+        case .deleted: .deleted
+        case .renamed: .renamed
+        case .copied: .copied
+        case .typeChanged: .typeChanged
+        case .unmerged: .conflicted
+        case .modified, .unknown: .modified
+        }
+    }
+}
+
+public extension Date {
+    /// "3 hours ago" for recent dates, otherwise the short date, for compact lists like blame.
+    func compactDescription(relativeTo now: Date = Date()) -> String {
+        let age = now.timeIntervalSince(self)
+        if age >= 0 && age < 7 * 24 * 3600 {
+            return formatted(.relative(presentation: .named, unitsStyle: .abbreviated))
+        }
+        return formatted(.dateTime.day().month(.abbreviated).year())
+    }
+}

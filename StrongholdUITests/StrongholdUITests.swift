@@ -53,6 +53,46 @@ final class StrongholdUITests: XCTestCase {
     }
 
     @MainActor
+    func testHistoryShowsDetailsBlameFileHistoryAndSearch() async throws {
+        let fixture = try await TemporaryRepository()
+        try await fixture.commit("Initial commit", files: ["README.md": "# Demo\n"])
+        try await fixture.commit("Add app", files: ["Sources/App.swift": "print(1)\n"])
+        try await fixture.commit("Edit readme", files: ["README.md": "# Demo\n\nMore.\n"])
+
+        let app = launch(environment: ["STRONGHOLD_OPEN_REPOSITORY": fixture.path, "STRONGHOLD_SECTION": "history"])
+        XCTAssertTrue(element(app, "history.table").waitForExistence(timeout: 10))
+        // The newest commit is selected and its files are listed.
+        XCTAssertTrue(element(app, "history.commitInfo").waitForExistence(timeout: 5))
+        let readme = element(app, "history.file.README.md")
+        XCTAssertTrue(readme.waitForExistence(timeout: 5))
+        readme.click()
+        XCTAssertTrue(element(app, "history.diff").waitForExistence(timeout: 5))
+
+        // Blame.
+        element(app, "history.fileView").radioButtons["Blame"].click()
+        XCTAssertTrue(element(app, "history.blame").waitForExistence(timeout: 5))
+
+        // File history from the context menu, then back.
+        readme.rightClick()
+        app.menuItems["Show File History"].click()
+        XCTAssertTrue(element(app, "history.closeFileHistory").waitForExistence(timeout: 5))
+        XCTAssertTrue((element(app, "history.description").value as? String ?? element(app, "history.description").label)
+            .contains("History of README.md"))
+        element(app, "history.closeFileHistory").click()
+        XCTAssertTrue(element(app, "history.scope").waitForExistence(timeout: 5))
+
+        // Search.
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.click()
+        search.typeText("add app")
+        let description = element(app, "history.description")
+        let matched = NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "1 commit matching", "1 commit matching")
+        await fulfillment(of: [XCTNSPredicateExpectation(predicate: matched, object: description)], timeout: 5)
+        app.terminate()
+    }
+
+    @MainActor
     func testLibraryListsRepositoriesAndOpensOne() async throws {
         let fixture = try await TemporaryRepository()
         try await fixture.commit("Initial commit", files: ["a.txt": "1\n"])

@@ -164,6 +164,7 @@ private struct FileRow: View {
     let area: ChangeArea
     let workingCopy: WorkingCopyModel
     @Binding var pendingDiscard: DiscardRequest?
+    @Environment(\.showFileHistory) private var showFileHistory
 
     private var selection: FileSelection { FileSelection(path: entry.path, area: area) }
     private var badge: ChangeBadge {
@@ -233,6 +234,8 @@ private struct FileRow: View {
             EmptyView()
         }
         Divider()
+        Button("Show File History") { showFileHistory(entry.path) }
+            .disabled(entry.kind == .untracked)
         Button("Reveal in Finder") {
             let urls = chosen.map { workingCopy.repository.rootURL.appendingPathComponent($0.path) }
             NSWorkspace.shared.activateFileViewerSelecting(urls)

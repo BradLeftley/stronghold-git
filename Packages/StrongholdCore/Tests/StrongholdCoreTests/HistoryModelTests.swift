@@ -234,3 +234,30 @@ struct HistoryModelTests {
         #expect(repo.history.rows.map(\.commit.summary) == ["Add notes"])
     }
 }
+
+@Suite("History presentation")
+struct HistoryPresentationTests {
+    @Test func commitFilesGetBadges() {
+        let pairs: [(CommitFileChange.Change, ChangeBadge)] = [
+            (.added, .added), (.deleted, .deleted), (.modified, .modified), (.renamed(similarity: 90), .renamed),
+            (.copied(similarity: 100), .copied), (.typeChanged, .typeChanged), (.unmerged, .conflicted), (.unknown, .modified),
+        ]
+        for (change, badge) in pairs {
+            #expect(CommitFileChange(change: change, path: "f").badge == badge)
+        }
+    }
+
+    @Test func compactDatesAreRelativeOnlyForTheLastWeek() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let recent = now.addingTimeInterval(-3600).compactDescription(relativeTo: now)
+        let old = now.addingTimeInterval(-30 * 24 * 3600).compactDescription(relativeTo: now)
+        #expect(recent != old)
+        #expect(old.contains("2026"))
+    }
+
+    @Test func scopesAndFieldsHaveLabels() {
+        #expect(HistoryModel.Scope.allCases.map(\.label) == ["Current Branch", "All Branches"])
+        #expect(HistoryModel.SearchField.allCases.allSatisfy { !$0.label.isEmpty && !$0.prompt.isEmpty })
+        #expect(HistoryModel.FileView.allCases.map(\.label) == ["Changes", "Blame"])
+    }
+}
