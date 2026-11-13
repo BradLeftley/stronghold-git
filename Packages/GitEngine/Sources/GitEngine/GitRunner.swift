@@ -15,7 +15,7 @@ public struct GitCommandResult: Sendable {
     @discardableResult
     public func checked() throws -> GitCommandResult {
         guard succeeded else {
-            throw GitError.commandFailed(arguments: arguments, exitCode: exitCode, stderr: stderrString)
+            throw GitError.commandFailed(arguments: arguments, exitCode: exitCode, stderr: Redactor.redact(stderrString))
         }
         return self
     }
@@ -96,7 +96,11 @@ public struct GitRunner: Sendable {
     /// Runs git and returns its output. It does not throw for a non-zero exit status; call
     /// `checked()` on the result for that. It throws `GitError.launchFailed` if git can't start and
     /// `CancellationError` if the task is cancelled (the git process is terminated).
-    public func run(_ arguments: [String], in directory: URL?, input: Data? = nil) async throws -> GitCommandResult {
+    ///
+    /// `onStandardError` receives stderr as it arrives, one chunk per line or carriage-return update, which
+    /// is how git reports progress for fetch, pull and push (pass `--progress` to get it without a terminal).
+    public func run(_ arguments: [String], in directory: URL?, input: Data? = nil,
+                    onStandardError: (@Sendable (String) -> Void)? = nil) async throws -> GitCommandResult {
         let process = Process()
         process.executableURL = executableURL
         process.arguments = fullArguments(arguments)
@@ -108,7 +112,8 @@ public struct GitRunner: Sendable {
             try await withCheckedThrowingContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
                     continuation.resume(with: Result {
-                        try Self.execute(process, control: control, arguments: arguments, input: input)
+                        try Self.execute(process, control: control, arguments: arguments, input: input,
+                                         onStandardError: onStandardError)
                     })
                 }
             }
@@ -120,7 +125,7 @@ public struct GitRunner: Sendable {
     }
 
     private static func execute(_ process: Process, control: ProcessControl, arguments: [String],
-                                input: Data?) throws -> GitCommandResult {
+                                input: Data?, onStandardError: (@Sendable (String) -> Void)?) throws -> GitCommandResult {
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
         let stdinPipe = input == nil ? nil : Pipe()
@@ -142,7 +147,11 @@ public struct GitRunner: Sendable {
         let stderrBox = DataBox()
         group.enter()
         DispatchQueue.global(qos: .userInitiated).async {
-            stderrBox.data = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            if let onStandardError {
+                stderrBox.data = readStreaming(stderrPipe.fileHandleForReading, onChunk: onStandardError)
+            } else {
+                stderrBox.data = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            }
             group.leave()
         }
         if let stdinPipe, let input {
@@ -161,6 +170,32 @@ public struct GitRunner: Sendable {
         return GitCommandResult(arguments: arguments, exitCode: process.terminationStatus,
                                 stdout: stdout, stderr: stderrBox.data)
     }
+}
+
+/// Reads a pipe to the end, reporting each line (ended by `\n` or `\r`) as soon as it is complete.
+private func readStreaming(_ handle: FileHandle, onChunk: (String) -> Void) -> Data {
+    var all = Data()
+    var pending = Data()
+    func flush(final: Bool) {
+        while let index = pending.firstIndex(where: { $0 == 0x0A || $0 == 0x0D }) {
+            let line = pending[pending.startIndex..<index]
+            pending = Data(pending[(index + 1)...])
+            if !line.isEmpty { onChunk(String(decoding: line, as: UTF8.self)) }
+        }
+        if final, !pending.isEmpty {
+            onChunk(String(decoding: pending, as: UTF8.self))
+            pending = Data()
+        }
+    }
+    while true {
+        let data = handle.availableData
+        if data.isEmpty { break }
+        all.append(data)
+        pending.append(data)
+        flush(final: false)
+    }
+    flush(final: true)
+    return all
 }
 
 /// Coordinates launching and cancelling a process across threads.

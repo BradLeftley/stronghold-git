@@ -13,6 +13,7 @@ public final class RepositoryModel: Identifiable {
 
     public let repository: Repository
     public let workingCopy: WorkingCopyModel
+    public let sync: SyncModel
     public var section: Section = .changes
     public private(set) var status = RepositoryStatus()
     public private(set) var commits: [Commit] = []
@@ -20,6 +21,11 @@ public final class RepositoryModel: Identifiable {
     public private(set) var remotes: [Remote] = []
     public private(set) var isLoading = false
     public private(set) var errorMessage: String?
+    /// The last failed branch action, for an alert. Clear it with `dismissActionError()`.
+    public internal(set) var actionError: String?
+    /// A short confirmation of the last branch action, such as the commit a deleted branch pointed at.
+    public internal(set) var actionNotice: String?
+    public internal(set) var isPerformingAction = false
     /// How many commits the history list loads.
     public var historyLimit: Int
 
@@ -35,6 +41,8 @@ public final class RepositoryModel: Identifiable {
         self.repository = repository
         self.historyLimit = historyLimit
         self.workingCopy = WorkingCopyModel(repository: repository)
+        self.sync = SyncModel(repository: repository)
+        sync.didFinish = { [weak self] in await self?.refresh() }
         workingCopy.reloadStatus = { [weak self] in await self?.refreshStatus() }
         workingCopy.reloadAll = { [weak self] in await self?.refresh() }
     }
