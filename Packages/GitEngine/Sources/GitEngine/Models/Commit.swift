@@ -53,22 +53,63 @@ public struct Commit: Sendable, Equatable, Hashable, Identifiable {
 public struct LogQuery: Sendable, Equatable {
     /// Revisions to start from. Empty means HEAD.
     public var revisions: [String]
-    /// Walk every ref (`--all`), ignoring `revisions`.
+    /// Walk every branch, remote-tracking branch and tag, plus HEAD, ignoring `revisions`. Stashes are
+    /// left out: they're shown on their own.
     public var allRefs: Bool
     public var limit: Int?
     public var skip: Int
-    /// Only commits touching these paths.
+    /// Only commits touching these paths. Pathspec magic such as `:(glob)` is allowed.
     public var paths: [String]
     /// Parents before children with branches kept together, which the history graph needs.
     public var topologicalOrder: Bool
+    /// Only commits whose message contains this text (`--grep`).
+    public var messagePattern: String?
+    /// Only commits whose author name or email contains this text (`--author`).
+    public var authorPattern: String?
+    /// Only commits that add or remove this text (`-S`, the "pickaxe").
+    public var contentPattern: String?
+    /// Match `messagePattern` and `authorPattern` as plain text rather than regular expressions.
+    public var fixedStrings: Bool
+    /// Ignore case in `messagePattern` and `authorPattern`.
+    public var ignoreCase: Bool
 
     public init(revisions: [String] = [], allRefs: Bool = false, limit: Int? = nil, skip: Int = 0,
-                paths: [String] = [], topologicalOrder: Bool = false) {
+                paths: [String] = [], topologicalOrder: Bool = false, messagePattern: String? = nil,
+                authorPattern: String? = nil, contentPattern: String? = nil, fixedStrings: Bool = true,
+                ignoreCase: Bool = true) {
         self.revisions = revisions
         self.allRefs = allRefs
         self.limit = limit
         self.skip = skip
         self.paths = paths
         self.topologicalOrder = topologicalOrder
+        self.messagePattern = messagePattern
+        self.authorPattern = authorPattern
+        self.contentPattern = contentPattern
+        self.fixedStrings = fixedStrings
+        self.ignoreCase = ignoreCase
+    }
+
+    /// Pathspecs matching any file whose name, or the name of a folder it's in, contains `text`,
+    /// ignoring case. Used to search history by file name.
+    public static func pathsContaining(_ text: String) -> [String] {
+        var escaped = ""
+        for character in text {
+            if "*?[]\\".contains(character) { escaped.append("\\") }
+            escaped.append(character)
+        }
+        return [":(glob,icase)**/*\(escaped)*", ":(glob,icase)**/*\(escaped)*/**"]
+    }
+
+    /// The options this query adds to `git log`, before `--end-of-options`.
+    var filterArguments: [String] {
+        var arguments: [String] = []
+        if let messagePattern, !messagePattern.isEmpty { arguments.append("--grep=\(messagePattern)") }
+        if let authorPattern, !authorPattern.isEmpty { arguments.append("--author=\(authorPattern)") }
+        if let contentPattern, !contentPattern.isEmpty { arguments.append("-S\(contentPattern)") }
+        let filtersText = (messagePattern?.isEmpty == false) || (authorPattern?.isEmpty == false)
+        if filtersText && fixedStrings { arguments.append("--fixed-strings") }
+        if filtersText && ignoreCase { arguments.append("--regexp-ignore-case") }
+        return arguments
     }
 }

@@ -62,7 +62,8 @@ public struct Repository: Sendable, Equatable {
         if query.topologicalOrder { arguments.append("--topo-order") }
         if let limit = query.limit { arguments.append("--max-count=\(limit)") }
         if query.skip > 0 { arguments.append("--skip=\(query.skip)") }
-        if query.allRefs { arguments.append("--all") }
+        arguments += query.filterArguments
+        if query.allRefs { arguments += ["--exclude=refs/stash", "--all"] }
         arguments.append("--end-of-options")
         if !query.allRefs { arguments += query.revisions.isEmpty ? ["HEAD"] : query.revisions }
         arguments.append("--")
