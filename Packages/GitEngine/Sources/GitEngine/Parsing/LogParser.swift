@@ -6,7 +6,7 @@ public enum LogParser {
     static let placeholders = ["%H", "%P", "%an", "%ae", "%at", "%cn", "%ce", "%ct", "%D", "%B"]
     static var width: Int { placeholders.count }
 
-    /// Used with `-z`, so each record is these fields separated by NUL and terminated by NUL.
+    /// Used with `-z` and `--decorate=full`, so each record is these fields separated by NUL and terminated by NUL.
     public static let format = "tformat:" + placeholders.joined(separator: "%x00")
 
     public static func parse(_ data: Data) throws -> [Commit] {
@@ -34,7 +34,7 @@ public enum LogParser {
             author: Signature(name: f[2], email: f[3], date: Date(timeIntervalSince1970: authorTime)),
             committer: Signature(name: f[5], email: f[6], date: Date(timeIntervalSince1970: committerTime)),
             message: message,
-            decorations: f[8].isEmpty ? [] : f[8].components(separatedBy: ", ")
+            decorations: f[8].isEmpty ? [] : f[8].components(separatedBy: ", ").map(Decoration.init(parsing:))
         )
     }
 }

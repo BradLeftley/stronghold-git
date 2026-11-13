@@ -82,6 +82,18 @@ struct HistoryTests {
         #expect(fromSide.map(\.commit.summary) == ["Fix(ui): side work"])
     }
 
+    @Test func fileHistoryTreatsWildcardsInNamesLiterally() async throws {
+        let tmp = try await TemporaryRepository()
+        try await tmp.commit("Add aXb", files: ["aXb.txt": "x"])
+        try await tmp.commit("Add a*b", files: ["a*b.txt": "star"])
+        try await tmp.commit("Edit aXb", files: ["aXb.txt": "y"])
+        try await tmp.git("mv", "a*b.txt", "c?d.txt")
+        try await tmp.git("commit", "-q", "-m", "Rename a*b")
+        let history = try await tmp.repository.fileHistory(of: "c?d.txt")
+        #expect(history.map(\.commit.summary) == ["Rename a*b", "Add a*b"])
+        #expect(history.map(\.path) == ["c?d.txt", "a*b.txt"])
+    }
+
     @Test func fileHistoryIsEmptyBeforeTheFirstCommit() async throws {
         let tmp = try await TemporaryRepository()
         #expect(try await tmp.repository.fileHistory(of: "x").isEmpty)

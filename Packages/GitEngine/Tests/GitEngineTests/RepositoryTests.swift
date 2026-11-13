@@ -140,8 +140,19 @@ struct RepositoryTests {
         #expect(log[1].author == Signature(name: "Test Author", email: "author@example.com",
                                             date: Date(timeIntervalSince1970: TimeInterval(firstTime))))
         #expect(log[1].committer.name == "Test Committer")
-        #expect(log[0].decorations.contains("HEAD -> main"))
-        #expect(log[0].decorations.contains("tag: v1.0"))
+        #expect(log[0].decorations.contains(Decoration(kind: .localBranch, fullName: "refs/heads/main", isHead: true)))
+        #expect(log[0].decorations.contains(Decoration(kind: .tag, fullName: "refs/tags/v1.0")))
+    }
+
+    @Test func logTellsLocalBranchesWithSlashesFromRemoteBranches() async throws {
+        let tmp = try await TemporaryRepository()
+        try await tmp.commit("c1", files: ["a": "1"])
+        try await tmp.git("branch", "feature/x")
+        try await tmp.git("update-ref", "refs/remotes/origin/main", "HEAD")
+        let decorations = try await tmp.repository.log()[0].decorations
+        #expect(decorations.first { $0.name == "feature/x" }?.kind == .localBranch)
+        #expect(decorations.first { $0.name == "origin/main" }?.kind == .remoteBranch)
+        #expect(decorations.first { $0.isHead }?.name == "main")
     }
 
     @Test func logSupportsLimitsPathsRevisionsAndMerges() async throws {

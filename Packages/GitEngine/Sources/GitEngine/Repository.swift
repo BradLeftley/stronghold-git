@@ -58,7 +58,7 @@ public struct Repository: Sendable, Equatable {
     /// Commits, newest first. Returns an empty list for a repository with no commits yet.
     public func log(_ query: LogQuery = LogQuery()) async throws -> [Commit] {
         if !query.allRefs, query.revisions.isEmpty, try await resolve("HEAD") == nil { return [] }
-        var arguments = ["log", "-z", "--format=\(LogParser.format)", "--no-show-signature", "--no-color"]
+        var arguments = ["log", "-z", "--format=\(LogParser.format)", "--decorate=full", "--no-show-signature", "--no-color"]
         if query.topologicalOrder { arguments.append("--topo-order") }
         if let limit = query.limit { arguments.append("--max-count=\(limit)") }
         if query.skip > 0 { arguments.append("--skip=\(query.skip)") }

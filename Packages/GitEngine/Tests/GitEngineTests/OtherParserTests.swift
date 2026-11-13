@@ -7,7 +7,7 @@ struct OtherParserTests {
     @Test func parsesLogRecords() throws {
         let a = String(repeating: "a", count: 40), b = String(repeating: "b", count: 40), c = String(repeating: "c", count: 40)
         let records = [
-            [a, "\(b) \(c)", "Ann", "ann@x", "100", "Cat", "cat@x", "200", "HEAD -> main, tag: v1", "Merge\n\nDetails\nhere\n"],
+            [a, "\(b) \(c)", "Ann", "ann@x", "100", "Cat", "cat@x", "200", "HEAD -> refs/heads/main, tag: refs/tags/v1", "Merge\n\nDetails\nhere\n"],
             [b, "", "Bob", "bob@x", "50", "Bob", "bob@x", "60", "", "Root\n"],
         ]
         let data = Data(records.map { $0.joined(separator: "\0") + "\0" }.joined().utf8)
@@ -19,11 +19,31 @@ struct OtherParserTests {
         #expect(commits[0].committer.date == Date(timeIntervalSince1970: 200))
         #expect(commits[0].summary == "Merge")
         #expect(commits[0].body == "Details\nhere")
-        #expect(commits[0].decorations == ["HEAD -> main", "tag: v1"])
+        #expect(commits[0].decorations == [Decoration(kind: .localBranch, fullName: "refs/heads/main", isHead: true),
+                                           Decoration(kind: .tag, fullName: "refs/tags/v1")])
         #expect(commits[0].shortID == "aaaaaaa")
         #expect(commits[1].parents.isEmpty)
         #expect(commits[1].body == "")
         #expect(commits[1].decorations.isEmpty)
+    }
+
+    @Test func parsesFullDecorations() {
+        let cases: [(String, Decoration.Kind, String, Bool, String)] = [
+            ("HEAD -> refs/heads/feature/x", .localBranch, "refs/heads/feature/x", true, "feature/x"),
+            ("HEAD", .detachedHead, "HEAD", true, "HEAD"),
+            ("refs/heads/feature/x", .localBranch, "refs/heads/feature/x", false, "feature/x"),
+            ("refs/remotes/origin/main", .remoteBranch, "refs/remotes/origin/main", false, "origin/main"),
+            ("refs/remotes/origin/HEAD", .remoteBranch, "refs/remotes/origin/HEAD", false, "origin/HEAD"),
+            ("tag: refs/tags/v1.0", .tag, "refs/tags/v1.0", false, "v1.0"),
+            ("refs/stash", .other, "refs/stash", false, "refs/stash"),
+        ]
+        for (text, kind, fullName, isHead, name) in cases {
+            let decoration = Decoration(parsing: text)
+            #expect(decoration.kind == kind, "\(text)")
+            #expect(decoration.fullName == fullName, "\(text)")
+            #expect(decoration.isHead == isHead, "\(text)")
+            #expect(decoration.name == name, "\(text)")
+        }
     }
 
     @Test func logRejectsTruncatedOutput() {

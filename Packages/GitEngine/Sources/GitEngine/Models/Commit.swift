@@ -21,8 +21,8 @@ public struct Commit: Sendable, Equatable, Hashable, Identifiable {
     public var committer: Signature
     /// The full message, without the trailing newline.
     public var message: String
-    /// Ref names pointing at this commit, as git decorates them (`HEAD -> main`, `origin/main`, `tag: v1.0`).
-    public var decorations: [String]
+    /// Refs pointing at this commit, in git's order.
+    public var decorations: [Decoration]
 
     /// The first line of the message.
     public var summary: String {
@@ -39,13 +39,72 @@ public struct Commit: Sendable, Equatable, Hashable, Identifiable {
     public var isMerge: Bool { parents.count > 1 }
 
     public init(id: String, parents: [String], author: Signature, committer: Signature, message: String,
-                decorations: [String] = []) {
+                decorations: [Decoration] = []) {
         self.id = id
         self.parents = parents
         self.author = author
         self.committer = committer
         self.message = message
         self.decorations = decorations
+    }
+}
+
+/// A ref pointing at a commit, read from `%D` with `--decorate=full` so a local branch with a slash in
+/// its name (`feature/x`) can be told apart from a remote-tracking branch (`origin/x`).
+public struct Decoration: Sendable, Equatable, Hashable {
+    public enum Kind: Sendable, Equatable, Hashable {
+        /// A detached HEAD.
+        case detachedHead
+        case localBranch
+        case remoteBranch
+        case tag
+        case other
+    }
+
+    public var kind: Kind
+    /// The full ref name, such as `refs/heads/main`, or `HEAD` for a detached HEAD.
+    public var fullName: String
+    /// HEAD points here: the checked-out branch, or a detached HEAD.
+    public var isHead: Bool
+
+    public init(kind: Kind, fullName: String, isHead: Bool = false) {
+        self.kind = kind
+        self.fullName = fullName
+        self.isHead = isHead
+    }
+
+    /// Parses one entry of `%D` written with `--decorate=full`: `HEAD -> refs/heads/main`, `HEAD`,
+    /// `tag: refs/tags/v1`, `refs/remotes/origin/main` or `refs/heads/feature/x`.
+    public init(parsing text: String) {
+        var name = text
+        var isHead = false
+        if name == "HEAD" {
+            self.init(kind: .detachedHead, fullName: "HEAD", isHead: true)
+            return
+        }
+        if name.hasPrefix("HEAD -> ") {
+            name.removeFirst("HEAD -> ".count)
+            isHead = true
+        }
+        if name.hasPrefix("tag: ") { name.removeFirst("tag: ".count) }
+        let kind: Kind = if name.hasPrefix("refs/heads/") {
+            .localBranch
+        } else if name.hasPrefix("refs/remotes/") {
+            .remoteBranch
+        } else if name.hasPrefix("refs/tags/") {
+            .tag
+        } else {
+            .other
+        }
+        self.init(kind: kind, fullName: name, isHead: isHead)
+    }
+
+    /// The name as people write it: `main`, `feature/x`, `origin/main`, `v1.0`.
+    public var name: String {
+        for prefix in ["refs/heads/", "refs/remotes/", "refs/tags/"] where fullName.hasPrefix(prefix) {
+            return String(fullName.dropFirst(prefix.count))
+        }
+        return fullName
     }
 }
 

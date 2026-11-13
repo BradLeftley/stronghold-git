@@ -21,10 +21,11 @@ extension Repository {
     /// - Parameter revision: where to start; nil means HEAD.
     public func fileHistory(of path: String, from revision: String? = nil, limit: Int? = nil) async throws -> [FileHistoryEntry] {
         if revision == nil, try await resolve("HEAD") == nil { return [] }
-        var arguments = ["log", "-z", "--format=\(LogParser.format)", "--no-show-signature", "--no-color",
-                         "--follow", "--name-status", "-M"]
+        var arguments = ["log", "-z", "--format=\(LogParser.format)", "--decorate=full", "--no-show-signature",
+                         "--no-color", "--follow", "--name-status", "-M"]
         if let limit { arguments.append("--max-count=\(limit)") }
-        arguments += ["--end-of-options", revision ?? "HEAD", "--", path]
+        // A literal pathspec, so `*`, `?` and `[` in a file name don't match other files.
+        arguments += ["--end-of-options", revision ?? "HEAD", "--", ":(literal)\(path)"]
         return try FileHistoryParser.parse(try await run(arguments).stdout, path: path)
     }
 
