@@ -1,0 +1,436 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		DE9692C45F77336B01CAA0C5 /* GitEngine in Frameworks */ = {isa = PBXBuildFile; productRef = E75B3505B5807AAD1A726FD9 /* GitEngine */; };
+		90662AA6854A619AB413E4FE /* StrongholdCore in Frameworks */ = {isa = PBXBuildFile; productRef = C258C2A4BDDF4E94333BB476 /* StrongholdCore */; };
+		F1E9DAF88A6590DDDE548FEF /* GitTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 4E45AB31C27AED13B2B270A0 /* GitTestSupport */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C145301535A0506A868B6C6D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1D08D35BB0498BCF6B31F8A3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6ED78E291C78CAA6566AB640;
+			remoteInfo = Stronghold;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		17FA54C22BDBABA78898CC0E /* Stronghold.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Stronghold.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1E3D53B1C9F2B49F0889407D /* StrongholdUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StrongholdUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		6A2D7A778DC7BBCA3EDF6BBA /* Stronghold.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Stronghold.entitlements; sourceTree = "<group>"; };
+		330BEE38F88F4AE8A325BCDB /* GitEngine */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = GitEngine; path = Packages/GitEngine; sourceTree = "<group>"; };
+		6F5C35EB5D6AA7CE882AD45E /* StrongholdCore */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = StrongholdCore; path = Packages/StrongholdCore; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		15380D5CC951DB4814BC074E /* Stronghold */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Stronghold;
+			sourceTree = "<group>";
+		};
+		8D2D9D65FF06327D419A2C38 /* StrongholdUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = StrongholdUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		73375B90C29FC240AAC0F205 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DE9692C45F77336B01CAA0C5 /* GitEngine in Frameworks */,
+				90662AA6854A619AB413E4FE /* StrongholdCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		45606DF4CF8F6E4D91DBBB5B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F1E9DAF88A6590DDDE548FEF /* GitTestSupport in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		71760DA9B238C5246DA069EA = {
+			isa = PBXGroup;
+			children = (
+				330BEE38F88F4AE8A325BCDB /* GitEngine */,
+				6F5C35EB5D6AA7CE882AD45E /* StrongholdCore */,
+				15380D5CC951DB4814BC074E /* Stronghold */,
+				8D2D9D65FF06327D419A2C38 /* StrongholdUITests */,
+				48D0B1D212BF7CDF995DDF8D /* Config */,
+				775D582C5CC22F04AE551DBC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		48D0B1D212BF7CDF995DDF8D /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				6A2D7A778DC7BBCA3EDF6BBA /* Stronghold.entitlements */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		775D582C5CC22F04AE551DBC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				17FA54C22BDBABA78898CC0E /* Stronghold.app */,
+				1E3D53B1C9F2B49F0889407D /* StrongholdUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		6ED78E291C78CAA6566AB640 /* Stronghold */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 38A5F7887B1E2794CA6EB614 /* Build configuration list for PBXNativeTarget "Stronghold" */;
+			buildPhases = (
+				A3942A0CAFB26C2B9833C46A /* Sources */,
+				73375B90C29FC240AAC0F205 /* Frameworks */,
+				222D83CBE8656BA513E903D6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				15380D5CC951DB4814BC074E /* Stronghold */,
+			);
+			name = Stronghold;
+			packageProductDependencies = (
+				E75B3505B5807AAD1A726FD9 /* GitEngine */,
+				C258C2A4BDDF4E94333BB476 /* StrongholdCore */,
+			);
+			productName = Stronghold;
+			productReference = 17FA54C22BDBABA78898CC0E;
+			productType = "com.apple.product-type.application";
+		};
+		1B6DAFFA934D1E45D744E452 /* StrongholdUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E13BC764C32C1170B4834331 /* Build configuration list for PBXNativeTarget "StrongholdUITests" */;
+			buildPhases = (
+				004AA8BBE5D22AF25FD5A45F /* Sources */,
+				45606DF4CF8F6E4D91DBBB5B /* Frameworks */,
+				86BE424D63D96205D565574D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CD6FF3313362369CF88631BE /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				8D2D9D65FF06327D419A2C38 /* StrongholdUITests */,
+			);
+			name = StrongholdUITests;
+			packageProductDependencies = (
+				4E45AB31C27AED13B2B270A0 /* GitTestSupport */,
+			);
+			productName = StrongholdUITests;
+			productReference = 1E3D53B1C9F2B49F0889407D;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1D08D35BB0498BCF6B31F8A3 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					6ED78E291C78CAA6566AB640 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					1B6DAFFA934D1E45D744E452 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 6ED78E291C78CAA6566AB640;
+					};
+				};
+			};
+			buildConfigurationList = C83BF2EB0D570D93910CD4BC /* Build configuration list for PBXProject "Stronghold" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 71760DA9B238C5246DA069EA;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 775D582C5CC22F04AE551DBC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				6ED78E291C78CAA6566AB640 /* Stronghold */,
+				1B6DAFFA934D1E45D744E452 /* StrongholdUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		222D83CBE8656BA513E903D6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		86BE424D63D96205D565574D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A3942A0CAFB26C2B9833C46A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		004AA8BBE5D22AF25FD5A45F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		CD6FF3313362369CF88631BE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6ED78E291C78CAA6566AB640 /* Stronghold */;
+			targetProxy = C145301535A0506A868B6C6D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		A11DD7BBCFB59035F15E347A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		BAB4243EFA652B9B3B3B7161 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		B8A32D1643E5C1103F874181 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = Config/Stronghold.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Stronghold;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.illumi.stronghold;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		D3A8B2F69FE694DAE9C2B11F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = Config/Stronghold.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Stronghold;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.illumi.stronghold;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+		0455A7EFF73B50D1EF26D880 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.illumi.stronghold.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_TARGET_NAME = Stronghold;
+			};
+			name = Debug;
+		};
+		3A94B40C115A2EA8D41CA6AE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.illumi.stronghold.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_TARGET_NAME = Stronghold;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C83BF2EB0D570D93910CD4BC /* Build configuration list for PBXProject "Stronghold" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A11DD7BBCFB59035F15E347A /* Debug */,
+				BAB4243EFA652B9B3B3B7161 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		38A5F7887B1E2794CA6EB614 /* Build configuration list for PBXNativeTarget "Stronghold" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B8A32D1643E5C1103F874181 /* Debug */,
+				D3A8B2F69FE694DAE9C2B11F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E13BC764C32C1170B4834331 /* Build configuration list for PBXNativeTarget "StrongholdUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0455A7EFF73B50D1EF26D880 /* Debug */,
+				3A94B40C115A2EA8D41CA6AE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E75B3505B5807AAD1A726FD9 /* GitEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GitEngine;
+		};
+		C258C2A4BDDF4E94333BB476 /* StrongholdCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = StrongholdCore;
+		};
+		4E45AB31C27AED13B2B270A0 /* GitTestSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GitTestSupport;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 1D08D35BB0498BCF6B31F8A3 /* Project object */;
+}
