@@ -3,7 +3,8 @@ import StrongholdCore
 import SwiftUI
 
 /// The history screen: the commit graph on top, and the selected commit's details, files and diff or
-/// blame below. Search filters by message, author, file or content.
+/// blame below. Search filters by message, author, file or content; in a file's history it filters that
+/// file's commits by message or author.
 struct HistoryView: View {
     @Bindable var history: HistoryModel
     let appeared: () async -> Void
@@ -35,7 +36,10 @@ struct HistoryView: View {
             CommitDetailView(history: history)
                 .frame(minHeight: 220, idealHeight: 360)
         }
-        .searchable(text: $searchText, placement: .toolbar, prompt: Text(searchField.prompt))
+        .searchable(text: $searchText, placement: .toolbar,
+                    prompt: Text(history.filePath == nil ? searchField.prompt : "Filter by message or author"))
+        // Opening or closing a file's history starts with no search, so the field must match.
+        .onChange(of: history.filePath) { searchText = "" }
         .task(id: SearchKey(text: searchText, field: searchField)) {
             // Wait for typing to pause before asking git.
             if !searchText.isEmpty { try? await Task.sleep(for: .milliseconds(300)) }
@@ -320,85 +324,127 @@ private struct FileContentPane: View {
     }
 }
 
-/// Each line with the commit that last changed it. Runs of lines from one commit share a label, and
-/// clicking a label opens that commit.
+/// Each line with the commit that last changed it. Every line is its own lazy row: the first line of a run
+/// from one commit shows its summary and the second its ID, author and date. Clicking the gutter opens the
+/// commit. Very long files are cut at a line limit, with "Show All".
 struct BlameView: View {
     let blame: Blame
     let selectedCommitID: String?
     let open: (String) -> Void
+    @State private var lineLimit = Self.initialLineLimit
 
-    private static let gutterWidth: CGFloat = 230
+    /// Debug builds can start with every line shown (`STRONGHOLD_BLAME_SHOW_ALL=1`), to measure big files.
+    private static var initialLineLimit: Int {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["STRONGHOLD_BLAME_SHOW_ALL"] == "1" { return .max }
+        #endif
+        return BlameRows.defaultLineLimit
+    }
+
+    static let gutterWidth: CGFloat = 230
+    private static let numberWidth: CGFloat = 56
+    private static let characterWidth: CGFloat = 7.4
 
     var body: some View {
-        let groups = blame.groups
-        ScrollView([.vertical, .horizontal]) {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(groups.enumerated()), id: \.offset) { index, group in
-                    BlameGroupView(blame: blame, group: group, isStriped: index.isMultiple(of: 2),
-                                   isCurrent: group.commitID == selectedCommitID, open: open)
+        let rows = BlameRows(blame, lineLimit: lineLimit)
+        let contentWidth = Self.gutterWidth + Self.numberWidth + CGFloat(rows.longestLine) * Self.characterWidth + 24
+        GeometryReader { proxy in
+            ScrollView([.vertical, .horizontal]) {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(rows.rows) { row in
+                        BlameLineRow(row: row, commit: blame.commits[row.commitID],
+                                     isCurrent: row.commitID == selectedCommitID, open: open)
+                            .frame(minWidth: max(contentWidth, proxy.size.width), alignment: .leading)
+                    }
+                    if rows.hiddenLines > 0 {
+                        HStack {
+                            Text("\(rows.hiddenLines) more lines are not shown.")
+                            Button("Show All") { lineLimit = .max }
+                                .accessibilityIdentifier("history.blame.showAll")
+                        }
+                        .padding(12)
+                    }
                 }
+                .padding(.bottom, 8)
             }
-            .padding(.bottom, 8)
         }
         .background(.background)
         .accessibilityIdentifier("history.blame")
     }
 }
 
-private struct BlameGroupView: View {
-    let blame: Blame
-    let group: BlameGroup
-    let isStriped: Bool
+private struct BlameLineRow: View {
+    let row: BlameRow
+    let commit: BlameCommit?
     let isCurrent: Bool
     let open: (String) -> Void
 
     var body: some View {
-        let commit = blame.commits[group.commitID]
         HStack(alignment: .top, spacing: 0) {
             Button {
                 if let commit, !commit.isUncommitted { open(commit.id) }
             } label: {
-                VStack(alignment: .leading, spacing: 1) {
-                    if let commit {
-                        Text(commit.isUncommitted ? "Not committed yet" : commit.summary)
-                            .lineLimit(1)
-                            .foregroundStyle(.primary)
-                        HStack(spacing: 6) {
-                            Text(commit.isUncommitted ? "" : commit.shortID).monospaced()
-                            Text(commit.author.name).lineLimit(1)
-                            Text(commit.author.date.compactDescription()).lineLimit(1)
-                        }
-                        .foregroundStyle(.secondary)
-                    }
-                }
-                .font(.caption)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 2)
-                .frame(width: 230, alignment: .leading)
-                .contentShape(Rectangle())
+                gutter
+                    .font(.caption)
+                    .lineLimit(1)
+                    .padding(.horizontal, 8)
+                    .frame(width: BlameView.gutterWidth, alignment: .leading)
+                    .frame(maxHeight: .infinity)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help(commit.map { "\($0.summary)\n\($0.author.name) <\($0.author.email)>\n\($0.id)" } ?? "")
             .accessibilityLabel(commit.map { "\($0.summary) by \($0.author.name)" } ?? "Unknown commit")
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(group.range, id: \.self) { index in
-                    let line = blame.lines[index]
-                    HStack(spacing: 0) {
-                        Text(String(line.lineNumber))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 46, alignment: .trailing)
-                            .padding(.trailing, 10)
-                        Text(DiffRows.displayText(line.text).0.isEmpty ? " " : DiffRows.displayText(line.text).0)
-                            .fixedSize(horizontal: true, vertical: false)
-                    }
-                    .font(.system(size: 12, design: .monospaced))
-                    .padding(.vertical, 1)
-                }
-            }
+            .accessibilityHidden(row.gutter == .none)
+            Text(String(row.lineNumber))
+                .foregroundStyle(.secondary)
+                .frame(width: 46, alignment: .trailing)
+                .padding(.trailing, 10)
+            Text(row.text.isEmpty ? " " : row.text)
+                .fixedSize(horizontal: true, vertical: false)
             Spacer(minLength: 0)
         }
-        .background(isCurrent ? Color.accentColor.opacity(0.14) : (isStriped ? Color.secondary.opacity(0.06) : .clear))
-        .overlay(alignment: .top) { Divider().opacity(0.5) }
+        .font(.system(size: 12, design: .monospaced))
+        .padding(.vertical, 1)
+        .background(isCurrent ? Color.accentColor.opacity(0.14)
+                    : (row.runIndex.isMultiple(of: 2) ? Color.secondary.opacity(0.06) : .clear))
+        .overlay(alignment: .top) { if row.isRunStart { Divider().opacity(0.5) } }
+    }
+
+    @ViewBuilder private var gutter: some View {
+        if let commit {
+            switch row.gutter {
+            case .summary:
+                summary(commit)
+            case .details:
+                details(commit)
+            case .summaryAndDetails:
+                // A one-line run: this row grows to fit both lines of the label.
+                VStack(alignment: .leading, spacing: 1) {
+                    summary(commit)
+                    details(commit)
+                }
+                .padding(.vertical, 1)
+            case .none:
+                Color.clear
+            }
+        } else {
+            Color.clear
+        }
+    }
+
+    private func summary(_ commit: BlameCommit) -> some View {
+        Text(commit.isUncommitted ? "Not committed yet" : commit.summary)
+            .foregroundStyle(.primary)
+    }
+
+    private func details(_ commit: BlameCommit) -> some View {
+        HStack(spacing: 6) {
+            if !commit.isUncommitted { Text(commit.shortID).monospaced() }
+            Text(commit.author.name)
+            Text(commit.author.date.compactDescription())
+        }
+        .foregroundStyle(.secondary)
     }
 }
 

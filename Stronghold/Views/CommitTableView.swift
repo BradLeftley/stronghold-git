@@ -228,19 +228,12 @@ final class GraphCellView: NSTableCellView {
         self.graphWidth = graphWidth
         setAccessibilityElement(true)
         setAccessibilityRole(.staticText)
-        let refs = commit.decorations.map(Self.label(for:)).joined(separator: ", ")
+        let refs = commit.decorations.map(\.name).joined(separator: ", ")
         setAccessibilityLabel(refs.isEmpty ? commit.summary : "\(commit.summary), \(refs)")
         needsDisplay = true
     }
 
     static func color(_ index: Int) -> NSColor { palette[index % palette.count] }
-
-    /// `HEAD -> main` reads as `main`; `tag: v1` as `v1`.
-    static func label(for decoration: String) -> String {
-        if decoration.hasPrefix("HEAD -> ") { return String(decoration.dropFirst(8)) }
-        if decoration.hasPrefix("tag: ") { return String(decoration.dropFirst(5)) }
-        return decoration
-    }
 
     override func draw(_ dirtyRect: NSRect) {
         guard let commit else { return }
@@ -291,10 +284,10 @@ final class GraphCellView: NSTableCellView {
 
         let font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize, weight: .medium)
         for decoration in commit.decorations {
-            let isHead = decoration.hasPrefix("HEAD")
-            let isTag = decoration.hasPrefix("tag: ")
-            let isRemote = !isHead && !isTag && decoration.contains("/")
-            let text = NSAttributedString(string: (isTag ? "🏷 " : "") + Self.label(for: decoration), attributes: [
+            let isHead = decoration.isHead
+            let isTag = decoration.kind == .tag
+            let isRemote = decoration.kind == .remoteBranch || decoration.kind == .other
+            let text = NSAttributedString(string: (isTag ? "🏷 " : "") + decoration.name, attributes: [
                 .font: font,
                 .foregroundColor: primaryText,
             ])
