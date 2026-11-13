@@ -16,7 +16,7 @@ private final class Counter: @unchecked Sendable {
 struct StrongholdCoreTests {
     private func appModel(for tmp: TemporaryRepository, beeps: Counter = Counter()) -> AppModel {
         let git = tmp.git
-        return AppModel(feedback: Feedback(environment: [:], play: { beeps.increment() }), locate: { git })
+        return AppModel(library: RepositoryLibrary(storageURL: nil), feedback: Feedback(environment: [:], play: { beeps.increment() }), locate: { git })
     }
 
     @Test func startFindsASupportedGit() async throws {
@@ -30,7 +30,7 @@ struct StrongholdCoreTests {
     }
 
     @Test func startReportsMissingGit() async {
-        let model = AppModel(feedback: Feedback(environment: [:], play: {}), locate: { nil })
+        let model = AppModel(library: RepositoryLibrary(storageURL: nil), feedback: Feedback(environment: [:], play: {}), locate: { nil })
         await model.start()
         #expect(model.gitState == .unavailable(GitError.gitNotFound.localizedDescription))
         #expect(await model.open(URL(fileURLWithPath: "/tmp")) == false)
@@ -39,7 +39,7 @@ struct StrongholdCoreTests {
 
     @Test func startReportsABrokenGit() async {
         let broken = GitRunner(executableURL: URL(fileURLWithPath: "/usr/bin/false"), configOverrides: [:])
-        let model = AppModel(feedback: Feedback(environment: [:], play: {}), locate: { broken })
+        let model = AppModel(library: RepositoryLibrary(storageURL: nil), feedback: Feedback(environment: [:], play: {}), locate: { broken })
         await model.start()
         guard case .unavailable = model.gitState else { Issue.record("expected unavailable"); return }
         #expect(model.git == nil)
@@ -78,15 +78,18 @@ struct StrongholdCoreTests {
         #expect(app.repository == nil)
     }
 
-    @Test func openingAFolderThatIsNotARepositoryFailsWithABeep() async throws {
+    @Test func openingAFolderThatIsNotARepositoryOffersToInitialiseIt() async throws {
         let tmp = try await TemporaryRepository()
         let beeps = Counter()
         let app = appModel(for: tmp, beeps: beeps)
         await app.start()
-        #expect(await app.open(tmp.baseURL.appendingPathComponent("home")) == false)
-        #expect(app.openError?.contains("is not a Git repository") == true)
+        let folder = tmp.baseURL.appendingPathComponent("home")
+        #expect(await app.open(folder) == false)
+        #expect(app.offerToInitialize == folder)
+        #expect(app.openError == nil)
         #expect(app.repository == nil)
-        #expect(beeps.count == 1)
+        #expect(app.library.entries.isEmpty)
+        #expect(beeps.count == 0)
     }
 
     @Test func scriptedRunsAreSilent() {
