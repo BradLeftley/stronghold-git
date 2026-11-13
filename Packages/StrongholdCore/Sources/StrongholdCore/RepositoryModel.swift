@@ -12,6 +12,7 @@ public final class RepositoryModel: Identifiable {
     }
 
     public let repository: Repository
+    public let workingCopy: WorkingCopyModel
     public var section: Section = .changes
     public private(set) var status = RepositoryStatus()
     public private(set) var commits: [Commit] = []
@@ -25,9 +26,17 @@ public final class RepositoryModel: Identifiable {
     public nonisolated var id: URL { repository.rootURL }
     public var name: String { repository.rootURL.lastPathComponent }
 
+    private var watcher: RepositoryWatcher?
+    private var statusGeneration = 0
+    private var statusRefreshRunning = false
+    private var statusRefreshQueued = false
+
     public init(repository: Repository, historyLimit: Int = 500) {
         self.repository = repository
         self.historyLimit = historyLimit
+        self.workingCopy = WorkingCopyModel(repository: repository)
+        workingCopy.reloadStatus = { [weak self] in await self?.refreshStatus() }
+        workingCopy.reloadAll = { [weak self] in await self?.refresh() }
     }
 
     /// Reloads status, history, refs and remotes in parallel.
@@ -36,6 +45,7 @@ public final class RepositoryModel: Identifiable {
         defer { isLoading = false }
         let repository = repository
         let limit = historyLimit
+        statusGeneration += 1
         do {
             async let status = repository.status()
             async let commits = repository.log(LogQuery(limit: limit))
@@ -47,7 +57,60 @@ public final class RepositoryModel: Identifiable {
             return
         } catch {
             errorMessage = error.localizedDescription
+            return
         }
+        await workingCopy.statusDidChange(status)
+    }
+
+    /// Reloads only the status (and the selected diff), which is all that changes while staging.
+    public func refreshStatus() async {
+        statusGeneration += 1
+        let generation = statusGeneration
+        do {
+            let fresh = try await repository.status()
+            // A newer refresh started while this one ran: let it win.
+            guard generation == statusGeneration else { return }
+            status = fresh
+            errorMessage = nil
+        } catch is CancellationError {
+            return
+        } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
+        await workingCopy.statusDidChange(status)
+    }
+
+    // MARK: Watching
+
+    /// Refreshes the status when files change on disk, including from the terminal or another tool.
+    public func startWatching() {
+        guard watcher == nil else { return }
+        let watcher = RepositoryWatcher(root: repository.rootURL) { [weak self] in
+            Task { @MainActor in await self?.refreshAfterFileChange() }
+        }
+        watcher.start()
+        self.watcher = watcher
+    }
+
+    public func stopWatching() {
+        watcher?.stop()
+        watcher = nil
+    }
+
+    /// Runs one refresh at a time; changes arriving meanwhile cause exactly one more run.
+    func refreshAfterFileChange() async {
+        guard !statusRefreshRunning else { statusRefreshQueued = true; return }
+        statusRefreshRunning = true
+        repeat {
+            statusRefreshQueued = false
+            // Changes made by the app itself (staging, committing) refresh on their own and a commit
+            // reloads history, so only the cheap status reload is needed here.
+            await refreshStatus()
+            // The branch or history may have moved too (a commit in a terminal).
+            if let head = status.branch.headOID, commits.first?.id != head { await refresh() }
+        } while statusRefreshQueued
+        statusRefreshRunning = false
     }
 
     // MARK: Derived lists for the sidebar
