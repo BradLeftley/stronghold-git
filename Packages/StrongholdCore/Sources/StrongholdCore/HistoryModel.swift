@@ -87,10 +87,14 @@ public final class HistoryModel {
     public private(set) var canLoadMore = false
     public private(set) var errorMessage: String?
 
+    /// What the list is filtered by. In a file's history it filters the file's commits by message or
+    /// author without asking git again.
     public private(set) var searchText = ""
     public private(set) var searchField: SearchField = .message
     /// When set, the list is this file's history.
     public private(set) var filePath: String?
+    /// The whole of the file's history, before `searchText` filters it.
+    private var fileHistoryRows: [Row] = []
 
     public private(set) var selectedCommit: Commit?
     public private(set) var changedFiles: [CommitFileChange] = []
@@ -113,7 +117,9 @@ public final class HistoryModel {
     /// A line describing what the list shows, for the header.
     public var listDescription: String {
         let count = rows.count == 1 ? "1 commit" : "\(rows.count)\(canLoadMore ? "+" : "") commits"
-        if let filePath { return "History of \(filePath) · \(count)" }
+        if let filePath {
+            return isSearching ? "History of \(filePath) · \(count) matching “\(searchText)”" : "History of \(filePath) · \(count)"
+        }
         if isSearching { return "\(count) matching “\(searchText)”" }
         return "\(scope.label) · \(count)"
     }
@@ -123,6 +129,12 @@ public final class HistoryModel {
     /// Loads the first page again, keeping the selection if the commit is still there.
     public func reload() async {
         await load(reset: true)
+    }
+
+    /// Loads the list again after branches move, keeping as many commits as were loaded so the
+    /// selection and your place in a long history stay put.
+    public func refresh() async {
+        await load(reset: true, keepingCount: true)
     }
 
     /// Loads the next page of commits. File histories load all at once.
@@ -137,28 +149,51 @@ public final class HistoryModel {
         await reload()
     }
 
-    /// Filters the list. An empty text shows the full history again.
+    /// Filters the list. An empty text shows the full history again. In a file's history the text
+    /// matches the commit message or author, whatever the field.
     public func search(_ text: String, in field: SearchField) async {
         guard text != searchText || field != searchField else { return }
         searchText = text
         searchField = field
-        await reload()
+        if filePath != nil {
+            // A load in progress filters its result with the new text when it lands.
+            guard hasLoaded, !isLoading else { return }
+            rows = Self.filter(fileHistoryRows, by: searchText)
+            await keepSelectionAfterReload()
+        } else {
+            await reload()
+        }
     }
 
-    /// Shows the history of one file, following it back through renames.
+    /// Shows the history of one file, following it back through renames. Starts with no search.
     public func showFileHistory(of path: String) async {
         filePath = path
         searchText = ""
         await reload()
     }
 
+    /// Goes back to the full history, with no search.
     public func clearFileHistory() async {
         guard filePath != nil else { return }
         filePath = nil
+        fileHistoryRows = []
+        searchText = ""
         await reload()
     }
 
-    private func load(reset: Bool) async {
+    /// The rows whose message, author name or author email contain `text`, ignoring case.
+    static func filter(_ rows: [Row], by text: String) -> [Row] {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return rows }
+        return rows.filter { row in
+            let commit = row.commit
+            return [commit.message, commit.author.name, commit.author.email].contains {
+                $0.range(of: text, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+            }
+        }
+    }
+
+    private func load(reset: Bool, keepingCount: Bool = false) async {
         listGeneration += 1
         let generation = listGeneration
         isLoading = true
@@ -168,16 +203,29 @@ public final class HistoryModel {
         do {
             let fresh: [Row]
             var more = false
+            var fileHistory: [Row] = []
             if let filePath {
                 let entries = try await repository.fileHistory(of: filePath)
-                fresh = entries.map { Row(commit: $0.commit, path: $0.path) }
+                fileHistory = entries.map { Row(commit: $0.commit, path: $0.path) }
+                fresh = Self.filter(fileHistory, by: searchText)
             } else {
-                let query = makeQuery(skip: skip)
-                let commits = try await repository.log(query)
-                more = commits.count > pageSize
-                fresh = commits.prefix(pageSize).map { Row(commit: $0, path: nil) }
+                var limit = keepingCount ? max(pageSize, rows.count) : pageSize
+                var commits = try await repository.log(makeQuery(skip: skip, limit: limit))
+                // New commits can push the selected one past the old count: load a few more pages
+                // to get it back, so the selection doesn't jump to the top.
+                if keepingCount, let selectedID = selectedCommit?.id, rows.contains(where: { $0.id == selectedID }) {
+                    var extraPages = 0
+                    while commits.count > limit, extraPages < 4, !commits.prefix(limit).contains(where: { $0.id == selectedID }) {
+                        extraPages += 1
+                        limit += pageSize
+                        commits = try await repository.log(makeQuery(skip: skip, limit: limit))
+                    }
+                }
+                more = commits.count > limit
+                fresh = commits.prefix(limit).map { Row(commit: $0, path: nil) }
             }
             guard generation == listGeneration else { return }
+            fileHistoryRows = fileHistory
             let all = reset ? fresh : rows + fresh
             let graph: CommitGraph?
             if filePath == nil && !isSearching {
@@ -202,10 +250,11 @@ public final class HistoryModel {
         if reset { await keepSelectionAfterReload() }
     }
 
-    /// The `git log` query for the current scope and search. Asks for one more than a page so it can
-    /// tell whether another page exists.
-    func makeQuery(skip: Int) -> LogQuery {
-        var query = LogQuery(allRefs: scope == .allBranches, limit: pageSize + 1, skip: skip, topologicalOrder: true)
+    /// The `git log` query for the current scope and search. Asks for one more than `limit` (a page
+    /// unless given) so it can tell whether more exist.
+    func makeQuery(skip: Int, limit: Int? = nil) -> LogQuery {
+        var query = LogQuery(allRefs: scope == .allBranches, limit: (limit ?? pageSize) + 1, skip: skip,
+                             topologicalOrder: true)
         let text = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return query }
         // Search results come newest first; only the full graph needs topological order.

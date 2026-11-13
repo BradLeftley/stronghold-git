@@ -128,6 +128,65 @@ struct HistoryModelTests {
         await model.clearFileHistory()
     }
 
+    @Test func searchInAFilesHistoryFiltersItsCommits() async throws {
+        let tmp = try await sample()
+        let model = HistoryModel(repository: tmp.repository)
+        await model.reload()
+        await model.search("side", in: .message)
+        await model.showFileHistory(of: "readme.txt")
+        #expect(model.searchText.isEmpty, "a file's history starts with no search")
+        #expect(model.rows.count == 3)
+
+        await model.search("RENAME", in: .message)
+        #expect(model.rows.map(\.commit.summary) == ["Rename notes"])
+        #expect(model.listDescription == "History of readme.txt · 1 commit matching “RENAME”")
+        #expect(model.selectedCommit?.summary == "Rename notes", "the selection moves onto a visible commit")
+        #expect(model.selectedFile?.path == "readme.txt")
+
+        // Author matches too, whatever the field, and an empty text shows every commit again.
+        await model.search("test author", in: .file)
+        #expect(model.rows.count == 3)
+        await model.search("nothing like this", in: .message)
+        #expect(model.rows.isEmpty)
+        await model.search("", in: .message)
+        #expect(model.rows.count == 3)
+
+        // Closing the file's history clears the search too.
+        await model.search("edit", in: .message)
+        await model.clearFileHistory()
+        #expect(model.searchText.isEmpty)
+        #expect(model.rows.count == 4)
+    }
+
+    @Test func refreshKeepsEveryLoadedPageAndTheSelection() async throws {
+        let tmp = try await TemporaryRepository()
+        for index in 1...7 { try await tmp.commit("c\(index)") }
+        let model = HistoryModel(repository: tmp.repository, pageSize: 3)
+        await model.reload()
+        await model.loadMore()
+        #expect(model.rows.count == 6)
+        let deep = try #require(model.rows.last)
+        await model.select(deep.id)
+
+        // Nothing new: the same six rows come back.
+        try await tmp.git("tag", "v1")
+        await model.refresh()
+        #expect(model.rows.map(\.commit.summary) == ["c7", "c6", "c5", "c4", "c3", "c2"])
+        #expect(model.canLoadMore)
+        #expect(model.selectedCommit?.id == deep.id, "a commit past the first page stays selected")
+
+        // A new commit pushes the selected one past six rows, so another page loads to keep it.
+        try await tmp.commit("c8")
+        await model.refresh()
+        #expect(model.rows.map(\.commit.summary) == ["c8", "c7", "c6", "c5", "c4", "c3", "c2", "c1"])
+        #expect(model.canLoadMore == false)
+        #expect(model.selectedCommit?.id == deep.id)
+
+        // A plain reload goes back to the first page.
+        await model.reload()
+        #expect(model.rows.count == 3)
+    }
+
     @Test func keepsTheOpenFileWhenSteppingThroughCommits() async throws {
         let tmp = try await TemporaryRepository()
         try await tmp.commit("one", files: ["a.txt": "1\n", "b.txt": "1\n"])
@@ -232,6 +291,29 @@ struct HistoryModelTests {
         await repo.showHistory(of: "src/App.swift")
         #expect(repo.section == .history)
         #expect(repo.history.rows.map(\.commit.summary) == ["Add notes"])
+    }
+
+    @Test func historyAppearingTwiceAtOnceLoadsOnceAndKeepsTheFirstCallersSelection() async throws {
+        let tmp = try await sample()
+        let repo = RepositoryModel(repository: tmp.repository)
+        await repo.refresh()
+        let history = repo.history
+        // The launch code loads and then selects; the view's task asks again while that runs.
+        let launch = Task { @MainActor in
+            await repo.historyAppeared()
+            #expect(history.rows.count == 4, "the first load has finished when historyAppeared returns")
+            await history.select(history.rows.dropFirst(2).first?.id)
+            await history.selectFile(history.changedFiles.first { $0.path == "readme.txt" })
+            await history.setFileView(.blame)
+        }
+        let view = Task { @MainActor in await repo.historyAppeared() }
+        await launch.value
+        await view.value
+        await repo.historyAppeared()
+        #expect(history.selectedCommit?.summary == "Rename notes")
+        #expect(history.fileView == .blame)
+        #expect(history.selectedFile?.path == "readme.txt")
+        guard case .blame = history.fileContent else { Issue.record("expected blame, got \(history.fileContent)"); return }
     }
 }
 

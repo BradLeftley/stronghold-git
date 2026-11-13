@@ -34,6 +34,7 @@ public final class RepositoryModel: Identifiable {
     private var statusRefreshQueued = false
     /// Where HEAD and every ref pointed when the history was last loaded.
     private var historySignature: [String] = []
+    private var firstHistoryLoad: Task<Void, Never>?
 
     public init(repository: Repository, historyLimit: Int = 50, historyPageSize: Int = 500) {
         self.repository = repository
@@ -75,10 +76,19 @@ public final class RepositoryModel: Identifiable {
         historySignature = currentHistorySignature
     }
 
-    /// Loads the history the first time the screen is shown.
+    /// Loads the history the first time the screen is shown. A second call while that first load runs
+    /// (the launch code and the view can both ask) waits for it instead of starting another, which
+    /// would throw away whatever the first one's caller selected.
     public func historyAppeared() async {
+        if let firstHistoryLoad {
+            await firstHistoryLoad.value
+            return
+        }
         guard !history.hasLoaded else { return }
-        await history.reload()
+        let load = Task { @MainActor [history] in await history.reload() }
+        firstHistoryLoad = load
+        await load.value
+        firstHistoryLoad = nil
         historySignature = currentHistorySignature
     }
 
@@ -91,7 +101,7 @@ public final class RepositoryModel: Identifiable {
         let signature = currentHistorySignature
         guard signature != historySignature else { return }
         historySignature = signature
-        await history.reload()
+        await history.refresh()
     }
 
     /// Reloads only the status (and the selected diff), which is all that changes while staging.
