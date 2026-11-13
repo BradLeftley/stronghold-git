@@ -14,7 +14,7 @@ struct RepositoryView: View {
         } detail: {
             Group {
                 switch repository.section {
-                case .changes: ChangesView(repository: repository)
+                case .changes: ChangesView(workingCopy: repository.workingCopy, headDescription: repository.headDescription)
                 case .history: HistoryView(commits: repository.commits)
                 }
             }
@@ -30,6 +30,20 @@ struct RepositoryView: View {
         .navigationTitle(repository.name)
         .navigationSubtitle(subtitle)
         .toolbar {
+            ToolbarItem {
+                Menu {
+                    ForEach(app.library.sorted.prefix(20)) { entry in
+                        Button(entry.name) { Task { await app.open(entry) } }
+                            .disabled(entry.path == repository.repository.rootURL.path)
+                    }
+                    Divider()
+                    Button("Clone Repository…") { app.isShowingCloneSheet = true }
+                    Button("Show All Repositories") { app.close() }
+                } label: {
+                    Label("Repositories", systemImage: "books.vertical")
+                }
+                .accessibilityIdentifier("toolbar.repositories")
+            }
             ToolbarItem {
                 Button {
                     Task { await repository.refresh() }

@@ -1,10 +1,18 @@
+import AppKit
 import GitEngine
 import StrongholdCore
 import SwiftUI
 
 @main
 struct StrongholdApp: App {
-    @State private var model = AppModel()
+    @State private var model: AppModel
+
+    init() {
+        // UI tests and screenshots point the library at a throwaway file so they never touch the real one.
+        let override = ProcessInfo.processInfo.environment["STRONGHOLD_LIBRARY_PATH"]
+        let storage = override.flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) } ?? RepositoryLibrary.standardStorageURL
+        _model = State(initialValue: AppModel(library: RepositoryLibrary(storageURL: storage)))
+    }
 
     var body: some Scene {
         Window("Stronghold", id: "main") {
@@ -18,6 +26,9 @@ struct StrongholdApp: App {
                 OpenRepositoryButton()
                     .environment(model)
                     .keyboardShortcut("o")
+                Button("Clone Repository…") { model.isShowingCloneSheet = true }
+                    .keyboardShortcut("o", modifiers: [.command, .shift])
+                    .disabled(model.git == nil)
             }
             CommandGroup(after: .toolbar) {
                 Button("Refresh") {
@@ -40,6 +51,13 @@ struct StrongholdApp: App {
             model.repository?.section = .history
         }
         #if DEBUG
+        if environment["STRONGHOLD_SHOW_CLONE"] == "1" { model.isShowingCloneSheet = true }
+        if let path = environment["STRONGHOLD_SELECT_FILE"], !path.isEmpty, let workingCopy = model.repository?.workingCopy {
+            let area: ChangeArea = environment["STRONGHOLD_SELECT_AREA"] == "staged" ? .staged : .unstaged
+            await workingCopy.select([FileSelection(path: path, area: area)])
+        }
+        #endif
+        #if DEBUG
         await DebugSnapshot.captureIfRequested()
         #endif
     }
@@ -58,6 +76,22 @@ struct RootView: View {
             } else {
                 WelcomeView()
             }
+        }
+        .sheet(isPresented: $model.isShowingCloneSheet) {
+            CloneView()
+                .environment(model)
+        }
+        .confirmationDialog("Create a Git repository here?", isPresented: Binding(
+            get: { model.offerToInitialize != nil }, set: { if !$0 { model.offerToInitialize = nil } }
+        ), titleVisibility: .visible, presenting: model.offerToInitialize) { folder in
+            Button("Create Repository") { Task { await model.initializeRepository(at: folder) } }
+            Button("Cancel", role: .cancel) {}
+        } message: { folder in
+            Text("\(folder.lastPathComponent) isn’t a Git repository yet. Stronghold can run git init there.")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            // Catch changes made while another app (a terminal, an editor) was in front.
+            Task { await model.repository?.refreshStatus() }
         }
         .alert("Couldn't Open Repository", isPresented: Binding(
             get: { model.openError != nil },

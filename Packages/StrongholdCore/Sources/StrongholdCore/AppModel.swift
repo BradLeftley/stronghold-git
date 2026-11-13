@@ -21,6 +21,8 @@ public final class AppModel {
     /// A folder the user tried to open that isn't a repository yet; the UI offers to initialise it.
     public var offerToInitialize: URL?
     public private(set) var cloneState: CloneState = .idle
+    /// Whether the clone sheet is showing; the File menu and the welcome screen both open it.
+    public var isShowingCloneSheet = false
 
     public enum CloneState: Equatable, Sendable {
         case idle
