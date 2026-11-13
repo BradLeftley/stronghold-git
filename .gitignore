@@ -10,3 +10,5 @@ build/
 *.p12
 *.mobileprovision
 *.provisionprofile
+screenshots-tmp/
+*.profraw
