@@ -13,6 +13,7 @@ public final class RepositoryModel: Identifiable {
 
     public let repository: Repository
     public let workingCopy: WorkingCopyModel
+    public let sync: SyncModel
     /// The history screen. It loads the first time it's shown and reloads when branches move.
     public let history: HistoryModel
     public var section: Section = .changes
@@ -22,6 +23,11 @@ public final class RepositoryModel: Identifiable {
     public private(set) var remotes: [Remote] = []
     public private(set) var isLoading = false
     public private(set) var errorMessage: String?
+    /// The last failed branch action, for an alert. Clear it with `dismissActionError()`.
+    public internal(set) var actionError: String?
+    /// A short confirmation of the last branch action, such as the commit a deleted branch pointed at.
+    public internal(set) var actionNotice: String?
+    public internal(set) var isPerformingAction = false
     /// How many recent commits `commits` holds. The history screen loads its own pages.
     public var historyLimit: Int
 
@@ -32,7 +38,7 @@ public final class RepositoryModel: Identifiable {
     private var statusGeneration = 0
     private var statusRefreshRunning = false
     private var statusRefreshQueued = false
-    /// Where HEAD and every ref pointed when the history was last loaded.
+    /// Where HEAD (and which branch it's on) and every ref pointed when the history was last loaded.
     private var historySignature: [String] = []
     private var firstHistoryLoad: Task<Void, Never>?
 
@@ -40,7 +46,9 @@ public final class RepositoryModel: Identifiable {
         self.repository = repository
         self.historyLimit = historyLimit
         self.workingCopy = WorkingCopyModel(repository: repository)
+        self.sync = SyncModel(repository: repository)
         self.history = HistoryModel(repository: repository, pageSize: historyPageSize)
+        sync.didFinish = { [weak self] in await self?.refresh() }
         workingCopy.reloadStatus = { [weak self] in await self?.refreshStatus() }
         workingCopy.reloadAll = { [weak self] in await self?.refresh() }
     }
@@ -93,7 +101,9 @@ public final class RepositoryModel: Identifiable {
     }
 
     private var currentHistorySignature: [String] {
-        [status.branch.headOID ?? ""] + refs.map { "\($0.name) \($0.target)" }
+        // The branch name matters too: switching between two branches on the same commit moves no ref,
+        // but it moves HEAD's decoration.
+        [status.branch.headOID ?? "", status.branch.branch ?? "(detached)"] + refs.map { "\($0.name) \($0.target)" }
     }
 
     private func reloadHistoryIfRefsMoved() async {

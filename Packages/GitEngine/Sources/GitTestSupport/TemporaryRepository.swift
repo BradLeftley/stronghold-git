@@ -108,3 +108,30 @@ public final class TemporaryRepository: @unchecked Sendable {
     /// The Unix time the next fixture commit will get.
     public var nextCommitTime: Int { lock.withLock { clock + 60 } }
 }
+
+/// A bare "server" repository with a working repository that has it as `origin`, for testing fetch, pull
+/// and push without a network.
+public struct TemporaryRemotePair: Sendable {
+    public let origin: TemporaryRepository
+    public let local: TemporaryRepository
+
+    /// `seed` makes an initial commit on `main` in `local` and pushes it, so both sides start in sync.
+    public init(seed: Bool = true) async throws {
+        origin = try await TemporaryRepository(bare: true)
+        local = try await TemporaryRepository()
+        try await local.git("remote", "add", "origin", origin.path)
+        if seed {
+            try await local.commit("first", files: ["a.txt": "one\n"])
+            try await local.git("push", "--set-upstream", "origin", "main")
+        }
+    }
+
+    /// Another working copy of the same remote, as a teammate would have.
+    public func makeTeammate() async throws -> TemporaryRepository {
+        let other = try await TemporaryRepository()
+        try await other.git("remote", "add", "origin", origin.path)
+        try await other.git("fetch", "origin")
+        try await other.git("checkout", "-B", "main", "--track", "origin/main")
+        return other
+    }
+}
