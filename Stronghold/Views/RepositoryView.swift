@@ -15,8 +15,11 @@ struct RepositoryView: View {
             Group {
                 switch repository.section {
                 case .changes: ChangesView(workingCopy: repository.workingCopy, headDescription: repository.headDescription)
-                case .history: HistoryView(commits: repository.commits)
+                case .history: HistoryView(history: repository.history, appeared: { await repository.historyAppeared() })
                 }
+            }
+            .environment(\.showFileHistory) { path in
+                Task { await repository.showHistory(of: path) }
             }
             .overlay(alignment: .bottom) {
                 if let error = repository.errorMessage {

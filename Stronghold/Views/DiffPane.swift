@@ -169,7 +169,7 @@ private struct HunkHeaderRow: View {
     }
 }
 
-private struct LineRow: View {
+struct LineRow: View {
     let line: DiffRowLine
     let isPicked: Bool
     let canPick: Bool
@@ -239,5 +239,52 @@ private struct LineRow: View {
         default: .clear
         }
         return isPicked ? Color.accentColor.opacity(0.22) : base
+    }
+}
+
+// MARK: - Read-only diff
+
+/// A diff with no staging actions, for commits in the history.
+struct ReadOnlyDiffView: View {
+    let file: FileDiff
+    @State private var lineLimit = DiffRows.defaultLineLimit
+
+    private static let characterWidth: CGFloat = 7.4
+    private static let gutterWidth: CGFloat = 22 + 46 + 46 + 18
+
+    var body: some View {
+        let rows = DiffRows(file, lineLimit: lineLimit)
+        let contentWidth = Self.gutterWidth + CGFloat(rows.longestLine) * Self.characterWidth + 24
+        GeometryReader { proxy in
+            ScrollView([.vertical, .horizontal]) {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(rows.rows) { row in
+                        switch row {
+                        case .hunk(_, let header, _):
+                            Text(header)
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .frame(minWidth: max(contentWidth, proxy.size.width), alignment: .leading)
+                                .background(Color.accentColor.opacity(0.10))
+                        case .line(let line):
+                            LineRow(line: line, isPicked: false, canPick: false) {}
+                                .frame(minWidth: max(contentWidth, proxy.size.width), alignment: .leading)
+                        }
+                    }
+                    if rows.hiddenLines > 0 {
+                        HStack {
+                            Text("\(rows.hiddenLines) more lines are not shown.")
+                            Button("Show All") { lineLimit = .max }
+                        }
+                        .padding(12)
+                    }
+                }
+            }
+        }
+        .background(.background)
+        .accessibilityIdentifier("history.diff")
     }
 }

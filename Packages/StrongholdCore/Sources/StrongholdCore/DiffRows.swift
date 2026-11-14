@@ -68,7 +68,7 @@ public struct DiffRows: Equatable, Sendable {
     }
 
     /// Expands tabs, drops a trailing carriage return and cuts very long lines.
-    static func displayText(_ text: String) -> (String, Bool) {
+    public static func displayText(_ text: String) -> (String, Bool) {
         var text = text
         if text.hasSuffix("\r") { text.removeLast() }
         if text.contains("\t") { text = text.replacingOccurrences(of: "\t", with: String(repeating: " ", count: tabWidth)) }
