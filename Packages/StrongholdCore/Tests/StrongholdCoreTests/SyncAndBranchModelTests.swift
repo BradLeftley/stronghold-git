@@ -20,6 +20,57 @@ struct SyncAndBranchModelTests {
         return (pair, model)
     }
 
+    /// The decorations on the newest commit in the history list, as `kind name`.
+    private func tipDecorations(_ model: RepositoryModel) -> [String] {
+        // `origin/HEAD` is a symbolic ref that git lists too; it isn't one of the branches under test.
+        (model.history.rows.first?.commit.decorations ?? []).filter { $0.name != "origin/HEAD" }.map { "\($0.kind) \($0.name)" }.sorted()
+    }
+
+    @Test func historyFollowsBranchActionsAndSyncWithTheRightDecorations() async throws {
+        let (pair, model) = try await setUp()
+        await model.historyAppeared()
+        #expect(tipDecorations(model) == ["localBranch main", "remoteBranch origin/main"])
+
+        // A local branch with a slash must not be shown as a remote one.
+        #expect(await model.createBranch("feature/x", checkout: false))
+        #expect(tipDecorations(model) == ["localBranch feature/x", "localBranch main", "remoteBranch origin/main"])
+
+        #expect(await model.renameBranch("feature/x", to: "feature/y"))
+        #expect(tipDecorations(model) == ["localBranch feature/y", "localBranch main", "remoteBranch origin/main"])
+
+        // Switching moves HEAD between decorations without moving any commit.
+        let before = model.history.rows.first?.commit.decorations.first(where: \.isHead)?.name
+        #expect(before == "main")
+        if let ref = model.localBranches.first(where: { $0.shortName == "feature/y" }) { await model.switchTo(ref) }
+        #expect(model.history.rows.first?.commit.decorations.first(where: \.isHead)?.name == "feature/y")
+
+        // A new commit on the branch shows up straight away.
+        try await pair.local.commit("on the branch", files: ["b.txt": "b"])
+        await model.refresh()
+        #expect(model.history.rows.first?.commit.summary == "on the branch")
+        #expect(tipDecorations(model) == ["localBranch feature/y"])
+
+        // Push publishes the branch: the history gets its remote decoration without any reload by hand.
+        await model.sync.push()
+        #expect(model.sync.failure == nil)
+        #expect(tipDecorations(model) == ["localBranch feature/y", "remoteBranch origin/feature/y"])
+
+        // Fetch and pull bring in a teammate's commit, and history shows it with both kinds of ref.
+        let mate = try await pair.makeTeammate()
+        try await mate.commit("theirs", files: ["t.txt": "t"])
+        try await mate.git("push", "origin", "main")
+        if let main = model.localBranches.first(where: { $0.shortName == "main" }) { await model.switchTo(main) }
+        await model.sync.fetch()
+        #expect(model.history.rows.first?.commit.summary != "theirs", "fetch alone doesn't move the current branch")
+        await model.sync.pull(strategy: .merge)
+        #expect(model.history.rows.first?.commit.summary == "theirs")
+        #expect(tipDecorations(model) == ["localBranch main", "remoteBranch origin/main"])
+
+        // Deleting a branch removes its decoration.
+        _ = await model.deleteBranch("feature/y", force: true)
+        #expect(!model.history.rows.contains { $0.commit.decorations.contains { $0.name == "feature/y" && $0.kind == .localBranch } })
+    }
+
     // MARK: Sync
 
     @Test func fetchUpdatesBehindCountsAndReportsNothingWrong() async throws {

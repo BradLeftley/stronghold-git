@@ -84,6 +84,32 @@ struct BranchTests {
         #expect(try await tmp.repository.currentBranch() == nil)
     }
 
+    /// Revisions come from the UI; one that looks like an option must be refused as a revision, not run.
+    @Test(arguments: ["--discard-changes", "-f", "--orphan=pwned", "--force"])
+    func optionLookingRevisionsAreNotOptions(revision: String) async throws {
+        let tmp = try await repoWithCommit()
+        try tmp.write("a.txt", "dirty\n")
+        let head = try await tmp.repository.resolve("HEAD")
+        let branch = try await tmp.repository.currentBranch()
+
+        await #expect(throws: (any Error).self) { try await tmp.repository.switchDetached(to: revision) }
+        await #expect(throws: (any Error).self) { try await tmp.repository.createBranch("topic", from: revision) }
+        await #expect(throws: (any Error).self) { try await tmp.repository.createBranch("topic", from: revision, checkout: false) }
+        await #expect(throws: (any Error).self) { try await tmp.repository.switchToRemoteBranch("origin/" + revision) }
+
+        #expect(try tmp.read("a.txt") == "dirty\n")
+        #expect(try await tmp.repository.resolve("HEAD") == head)
+        #expect(try await tmp.repository.currentBranch() == branch)
+        #expect(try await tmp.repository.resolve("refs/heads/topic") == nil)
+    }
+
+    @Test func renameTreatsALeadingDashNameAsAName() async throws {
+        let tmp = try await repoWithCommit()
+        let branch = try await tmp.repository.currentBranch()
+        await #expect(throws: (any Error).self) { try await tmp.repository.renameBranch("--force", to: "other") }
+        #expect(try await tmp.repository.currentBranch() == branch)
+    }
+
     // MARK: Rename and delete
 
     @Test func renamesTheCurrentBranch() async throws {

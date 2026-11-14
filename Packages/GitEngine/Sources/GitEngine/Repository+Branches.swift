@@ -39,8 +39,9 @@ extension Repository {
     /// Starting from a remote-tracking branch makes the new branch track it.
     public func createBranch(_ name: String, from startPoint: String? = nil, checkout: Bool = true) async throws {
         try await validateBranchName(name)
+        // `--end-of-options` keeps a start point that begins with "-" from being read as an option.
         var arguments = checkout ? ["switch", "--create", name] : ["branch", name]
-        if let startPoint { arguments.append(startPoint) }
+        if let startPoint { arguments += ["--end-of-options", startPoint] }
         try await run(arguments)
     }
 
@@ -63,19 +64,19 @@ extension Repository {
         if exists {
             try await run(["switch", local])
         } else {
-            try await run(["switch", "--create", local, "--track", remoteBranch])
+            try await run(["switch", "--create", local, "--track", "--end-of-options", remoteBranch])
         }
     }
 
     /// Checks out a commit, tag or remote branch without a branch (detached HEAD).
     public func switchDetached(to revision: String) async throws {
-        try await run(["switch", "--detach", revision])
+        try await run(["switch", "--detach", "--end-of-options", revision])
     }
 
     /// Renames a local branch, keeping its upstream configuration.
     public func renameBranch(_ old: String, to new: String) async throws {
         try await validateBranchName(new)
-        try await run(["branch", "--move", old, new])
+        try await run(["branch", "--move", "--end-of-options", old, new])
     }
 
     /// Deletes a local branch and returns the commit it pointed at, so the deletion can be undone.

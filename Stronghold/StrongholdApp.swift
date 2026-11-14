@@ -47,14 +47,29 @@ struct StrongholdApp: App {
         if let path = environment["STRONGHOLD_OPEN_REPOSITORY"], !path.isEmpty {
             await model.open(URL(fileURLWithPath: path, isDirectory: true))
         }
-        if let section = environment["STRONGHOLD_SECTION"], section == "history" {
-            model.repository?.section = .history
+        if let section = environment["STRONGHOLD_SECTION"], section == "history", let repository = model.repository {
+            repository.section = .history
+            await repository.historyAppeared()
         }
         #if DEBUG
         if environment["STRONGHOLD_SHOW_CLONE"] == "1" { model.isShowingCloneSheet = true }
         if let path = environment["STRONGHOLD_SELECT_FILE"], !path.isEmpty, let workingCopy = model.repository?.workingCopy {
             let area: ChangeArea = environment["STRONGHOLD_SELECT_AREA"] == "staged" ? .staged : .unstaged
             await workingCopy.select([FileSelection(path: path, area: area)])
+        }
+        // Screenshot and UI-test hooks for the history screen.
+        if let repository = model.repository, repository.section == .history {
+            let history = repository.history
+            if environment["STRONGHOLD_HISTORY_SCOPE"] == "all" { await history.setScope(.allBranches) }
+            if let path = environment["STRONGHOLD_HISTORY_FILE"], !path.isEmpty { await repository.showHistory(of: path) }
+            if let revision = environment["STRONGHOLD_HISTORY_COMMIT"], !revision.isEmpty,
+               let id = try? await repository.repository.resolve(revision) {
+                await history.select(id)
+            }
+            if let path = environment["STRONGHOLD_HISTORY_OPEN"], !path.isEmpty {
+                await history.selectFile(history.changedFiles.first { $0.path == path })
+            }
+            if environment["STRONGHOLD_HISTORY_VIEW"] == "blame" { await history.setFileView(.blame) }
         }
         #endif
         #if DEBUG
